@@ -73,8 +73,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PushbackInputStream;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -474,8 +476,8 @@ public class AsyncHttpClient {
      * 10 seconds.
      *
      * @param value the connect/socket timeout in milliseconds, at least 1 second
-     * @see {@link #setConnectTimeout(int)} if you need further refinement for either value or
-     * or {@link #setResponseTimeout(int)} methods.
+     * @see #setConnectTimeout(int)
+     * @see #setResponseTimeout(int)
      */
     public void setTimeout(int value) {
         value = value < 1000 ? DEFAULT_SOCKET_TIMEOUT : value;
@@ -650,8 +652,16 @@ public class AsyncHttpClient {
      */
     public void setBasicAuth(String username, String password, AuthScope scope, boolean preemtive) {
         UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(username, password);
-        this.httpClient.getCredentialsProvider().setCredentials(scope == null ? AuthScope.ANY : scope, credentials);
+        setCredentials(scope, credentials);
         setAuthenticationPreemptive(preemtive);
+    }
+
+    public void setCredentials(AuthScope authScope, Credentials credentials) {
+        if (credentials == null) {
+            Log.d(LOG_TAG, "Provided credentials are null, not setting");
+            return;
+        }
+        this.httpClient.getCredentialsProvider().setCredentials(authScope == null ? AuthScope.ANY : authScope, credentials);
     }
 
     /**
@@ -670,8 +680,18 @@ public class AsyncHttpClient {
 
     /**
      * Removes previously set basic auth credentials
+     *
+     * @deprecated
      */
+    @Deprecated
     public void clearBasicAuth() {
+        clearCredentialsProvider();
+    }
+
+    /**
+     * Removes previously set auth credentials
+     */
+    public void clearCredentialsProvider() {
         this.httpClient.getCredentialsProvider().clear();
     }
 
@@ -1148,7 +1168,11 @@ public class AsyncHttpClient {
         }
 
         if (contentType != null) {
-            uriRequest.setHeader(HEADER_CONTENT_TYPE, contentType);
+            if (uriRequest instanceof HttpEntityEnclosingRequestBase && ((HttpEntityEnclosingRequestBase) uriRequest).getEntity() != null) {
+                Log.w(LOG_TAG, "Passed contentType will be ignored because HttpEntity sets content type");
+            } else {
+                uriRequest.setHeader(HEADER_CONTENT_TYPE, contentType);
+            }
         }
 
         responseHandler.setRequestHeaders(uriRequest.getAllHeaders());
@@ -1167,9 +1191,6 @@ public class AsyncHttpClient {
                     requestMap.put(context, requestList);
                 }
             }
-
-            if (responseHandler instanceof RangeFileAsyncHttpResponseHandler)
-                ((RangeFileAsyncHttpResponseHandler) responseHandler).updateRequestHeaders(uriRequest);
 
             requestList.add(requestHandle);
 
@@ -1206,8 +1227,14 @@ public class AsyncHttpClient {
         if (url == null)
             return null;
 
-        if (shouldEncodeUrl)
-            url = url.replace(" ", "%20");
+        if (shouldEncodeUrl) {
+            try {
+                url = URLEncoder.encode(url, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                // Should not really happen, added just for sake of validity
+                Log.e(LOG_TAG, "getUrlWithQueryString encoding URL", e);
+            }
+        }
 
         if (params != null) {
             // Construct the query string and trim it, in case it
@@ -1374,7 +1401,7 @@ public class AsyncHttpClient {
 
         @Override
         public long getContentLength() {
-            return -1;
+            return wrappedEntity == null ? 0 : wrappedEntity.getContentLength();
         }
 
         @Override

@@ -9,6 +9,9 @@
     <string name="button_run">Run</string>
     <string name="button_cancel">Cancel</string>
 
+    <string name="menu_use_https">Use HTTPS</string>
+    <string name="menu_clear_view">Clear Outputs</string>
+
     <string name="label_headers">Headers (key=val, one per line)</string>
     <string name="label_req_body">Request body</string>
     <string name="label_credentials">Server requests authentication.\nTo gain access, enter:\n\nUsername: %1$s\nPassword: %2$s</string>
@@ -37,4 +40,7 @@
     <string name="title_401_unauth">401 basic authentication</string>
     <string name="title_pre_post_processing">Pre-/Post-processing</string>
     <string name="title_async_background_thread">Async on background thread</string>
+    <string name="title_content_type_http_entity">Content-Type with HttpEntity</string>
+    <string name="title_resume_download">Resuming Download</string>
+    <string name="title_digest_auth">Digest Authentication</string>
 </resources>

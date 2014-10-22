@@ -18,11 +18,15 @@
 
 package com.loopj.android.http.sample;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -37,8 +41,11 @@ import com.loopj.android.http.ResponseHandlerInterface;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicHeader;
+import org.apache.http.protocol.HttpContext;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -47,26 +54,34 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.protocol.HttpContext;
 
 public abstract class SampleParentActivity extends Activity implements SampleInterface {
 
     private AsyncHttpClient asyncHttpClient = new AsyncHttpClient() {
 
-      @Override
-      protected AsyncHttpRequest newAsyncHttpRequest(DefaultHttpClient client, HttpContext httpContext, HttpUriRequest uriRequest, String contentType, ResponseHandlerInterface responseHandler, Context context) {
-        AsyncHttpRequest httpRequest = getHttpRequest(client, httpContext, uriRequest, contentType, responseHandler, context);
-        return httpRequest == null
-            ? super.newAsyncHttpRequest(client, httpContext, uriRequest, contentType, responseHandler, context)
-            : httpRequest;
-      }
+        @Override
+        protected AsyncHttpRequest newAsyncHttpRequest(DefaultHttpClient client, HttpContext httpContext, HttpUriRequest uriRequest, String contentType, ResponseHandlerInterface responseHandler, Context context) {
+            AsyncHttpRequest httpRequest = getHttpRequest(client, httpContext, uriRequest, contentType, responseHandler, context);
+            return httpRequest == null
+                    ? super.newAsyncHttpRequest(client, httpContext, uriRequest, contentType, responseHandler, context)
+                    : httpRequest;
+        }
     };
     private EditText urlEditText, headersEditText, bodyEditText;
     private LinearLayout responseLayout;
+    public LinearLayout customFieldsLayout;
     private final List<RequestHandle> requestHandles = new LinkedList<RequestHandle>();
+    private static final String LOG_TAG = "SampleParentActivity";
 
+    private static final int MENU_USE_HTTPS = 0;
+    private static final int MENU_CLEAR_VIEW = 1;
+
+    private boolean useHttps = true;
+
+    protected static final String PROTOCOL_HTTP = "http://";
+    protected static final String PROTOCOL_HTTPS = "https://";
+
+    protected static String PROTOCOL = PROTOCOL_HTTPS;
     protected static final int LIGHTGREEN = Color.parseColor("#00FF66");
     protected static final int LIGHTRED = Color.parseColor("#FF3300");
     protected static final int YELLOW = Color.parseColor("#FFFF00");
@@ -78,9 +93,12 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
         setContentView(R.layout.parent_layout);
         setTitle(getSampleTitle());
 
+        setHomeAsUpEnabled();
+
         urlEditText = (EditText) findViewById(R.id.edit_url);
         headersEditText = (EditText) findViewById(R.id.edit_headers);
         bodyEditText = (EditText) findViewById(R.id.edit_body);
+        customFieldsLayout = (LinearLayout) findViewById(R.id.layout_custom);
         Button runButton = (Button) findViewById(R.id.button_run);
         Button cancelButton = (Button) findViewById(R.id.button_cancel);
         LinearLayout headersLayout = (LinearLayout) findViewById(R.id.layout_headers);
@@ -88,6 +106,7 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
         responseLayout = (LinearLayout) findViewById(R.id.layout_response);
 
         urlEditText.setText(getDefaultURL());
+        headersEditText.setText(getDefaultHeaders());
 
         bodyLayout.setVisibility(isRequestBodyAllowed() ? View.VISIBLE : View.GONE);
         headersLayout.setVisibility(isRequestHeadersAllowed() ? View.VISIBLE : View.GONE);
@@ -101,6 +120,40 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
                 cancelButton.setEnabled(false);
             }
         }
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem useHttpsMenuItem = menu.findItem(MENU_USE_HTTPS);
+        if (useHttpsMenuItem != null) {
+            useHttpsMenuItem.setChecked(useHttps);
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add(Menu.NONE, MENU_USE_HTTPS, Menu.NONE, R.string.menu_use_https).setCheckable(true);
+        menu.add(Menu.NONE, MENU_CLEAR_VIEW, Menu.NONE, R.string.menu_clear_view);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case MENU_USE_HTTPS:
+                useHttps = !useHttps;
+                PROTOCOL = useHttps ? PROTOCOL_HTTPS : PROTOCOL_HTTP;
+                urlEditText.setText(getDefaultURL());
+                return true;
+            case MENU_CLEAR_VIEW:
+                clearOutputs();
+                return true;
+            case android.R.id.home:
+                finish();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -160,10 +213,11 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
 
                     String headerName = line.substring(0, equalSignPos).trim();
                     String headerValue = line.substring(1 + equalSignPos).trim();
+                    Log.d(LOG_TAG, String.format("Added header: [%s:%s]", headerName, headerValue));
 
                     headers.add(new BasicHeader(headerName, headerValue));
                 } catch (Throwable t) {
-                    Log.e("SampleParentActivity", "Not a valid header line: " + line, t);
+                    Log.e(LOG_TAG, "Not a valid header line: " + line, t);
                 }
             }
         }
@@ -181,7 +235,7 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
             try {
                 return new StringEntity(bodyText);
             } catch (UnsupportedEncodingException e) {
-                Log.e("SampleParentActivity", "cannot create String entity", e);
+                Log.e(LOG_TAG, "cannot create String entity", e);
             }
         }
         return null;
@@ -193,8 +247,8 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
 
     public String getUrlText(String defaultText) {
         return urlEditText != null && urlEditText.getText() != null
-            ? urlEditText.getText().toString()
-            : defaultText;
+                ? urlEditText.getText().toString()
+                : defaultText;
     }
 
     public String getBodyText() {
@@ -203,8 +257,8 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
 
     public String getBodyText(String defaultText) {
         return bodyEditText != null && bodyEditText.getText() != null
-            ? bodyEditText.getText().toString()
-            : defaultText;
+                ? bodyEditText.getText().toString()
+                : defaultText;
     }
 
     public String getHeadersText() {
@@ -213,8 +267,8 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
 
     public String getHeadersText(String defaultText) {
         return headersEditText != null && headersEditText.getText() != null
-            ? headersEditText.getText().toString()
-            : defaultText;
+                ? headersEditText.getText().toString()
+                : defaultText;
     }
 
     protected final void debugHeaders(String TAG, Header[] headers) {
@@ -276,6 +330,11 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
         return tv;
     }
 
+    @Override
+    public String getDefaultHeaders() {
+        return null;
+    }
+
     protected final void addView(View v) {
         responseLayout.addView(v);
     }
@@ -295,5 +354,13 @@ public abstract class SampleParentActivity extends Activity implements SampleInt
     @Override
     public void setAsyncHttpClient(AsyncHttpClient client) {
         this.asyncHttpClient = client;
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    private void setHomeAsUpEnabled() {
+        if (Integer.valueOf(Build.VERSION.SDK) >= 11) {
+            if (getActionBar() != null)
+                getActionBar().setDisplayHomeAsUpEnabled(true);
+        }
     }
 }

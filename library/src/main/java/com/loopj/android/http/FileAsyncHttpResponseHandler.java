@@ -32,6 +32,7 @@ import java.io.InputStream;
 public abstract class FileAsyncHttpResponseHandler extends AsyncHttpResponseHandler {
 
     protected final File mFile;
+    protected final boolean append;
     private static final String LOG_TAG = "FileAsyncHttpResponseHandler";
 
     /**
@@ -40,9 +41,20 @@ public abstract class FileAsyncHttpResponseHandler extends AsyncHttpResponseHand
      * @param file File to store response within, must not be null
      */
     public FileAsyncHttpResponseHandler(File file) {
+        this(file, false);
+    }
+
+    /**
+     * Obtains new FileAsyncHttpResponseHandler and stores response in passed file
+     *
+     * @param file   File to store response within, must not be null
+     * @param append whether data should be appended to existing file
+     */
+    public FileAsyncHttpResponseHandler(File file, boolean append) {
         super();
-        assert (file != null);
+        AssertUtils.asserts(file != null, "File passed into FileAsyncHttpResponseHandler constructor must not be null");
         this.mFile = file;
+        this.append = append;
     }
 
     /**
@@ -53,6 +65,7 @@ public abstract class FileAsyncHttpResponseHandler extends AsyncHttpResponseHand
     public FileAsyncHttpResponseHandler(Context context) {
         super();
         this.mFile = getTemporaryFile(context);
+        this.append = false;
     }
 
     /**
@@ -71,8 +84,10 @@ public abstract class FileAsyncHttpResponseHandler extends AsyncHttpResponseHand
      * @return temporary file or null if creating file failed
      */
     protected File getTemporaryFile(Context context) {
-        assert (context != null);
+        AssertUtils.asserts(context != null, "Tried creating temporary file without having Context");
         try {
+            // not effective in release mode
+            assert context != null;
             return File.createTempFile("temp_", "_handled", context.getCacheDir());
         } catch (IOException e) {
             Log.e(LOG_TAG, "Cannot create temporary file", e);
@@ -125,7 +140,7 @@ public abstract class FileAsyncHttpResponseHandler extends AsyncHttpResponseHand
         if (entity != null) {
             InputStream instream = entity.getContent();
             long contentLength = entity.getContentLength();
-            FileOutputStream buffer = new FileOutputStream(getTargetFile());
+            FileOutputStream buffer = new FileOutputStream(getTargetFile(), this.append);
             if (instream != null) {
                 try {
                     byte[] tmp = new byte[BUFFER_SIZE];
