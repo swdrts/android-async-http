@@ -3,6 +3,12 @@
 ## 1.4.7 (future version)
 
   - Fixed crash when canceling through RequestHandle from UI Thread (NetworkOnMainThreadException)
+  - Fixed URL encoding feature, that was breaking whole URL, not just path and query parts
+  - FileAsyncHttpResponseHandler now checks that target file path is available or can be created
+  - DataAsyncHttpResponseHandler was sending cancel notification instead of progress notification, fixed
+  - Added support for HTTP PATCH requests
+  - Fixed Assert exception when mkdirs in FileAsyncHttpResponseHandler tries to create dirs that already exists
+  - Provided option to easily override ClientConnectionManager provision in AsyncHttpClient
 
 ## 1.4.6 (released 7. 9. 2014)
 

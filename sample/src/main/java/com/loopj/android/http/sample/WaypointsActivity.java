@@ -35,6 +35,7 @@ public class WaypointsActivity extends ListActivity {
             new SampleConfig(R.string.title_post_sample, PostSample.class),
             new SampleConfig(R.string.title_delete_sample, DeleteSample.class),
             new SampleConfig(R.string.title_put_sample, PutSample.class),
+            new SampleConfig(R.string.title_patch_sample, PatchSample.class),
             new SampleConfig(R.string.title_json_sample, JsonSample.class),
             new SampleConfig(R.string.title_json_streamer_sample, JsonStreamerSample.class),
             new SampleConfig(R.string.title_sax_example, SaxSample.class),
@@ -56,7 +57,8 @@ public class WaypointsActivity extends ListActivity {
             new SampleConfig(R.string.title_pre_post_processing, PrePostProcessingSample.class),
             new SampleConfig(R.string.title_content_type_http_entity, ContentTypeForHttpEntitySample.class),
             new SampleConfig(R.string.title_resume_download, ResumeDownloadSample.class),
-            new SampleConfig(R.string.title_digest_auth, DigestAuthSample.class)
+            new SampleConfig(R.string.title_digest_auth, DigestAuthSample.class),
+            new SampleConfig(R.string.title_use_pool_thread, UsePoolThreadSample.class)
     };
 
     @Override
